@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "properties": {
+    "BlacklistUrls": {
+      "type": "array",
+      "items" : {
+         "type": "string"
+       }
+      // format: "mode|url", "url"...
+      // mode: regexp, exact, contains (exact by default)
+      // mode shortcuts: 'r' for 'regexp', 'c' for 'contains' and nothing for 'exact'
+      // e.g.: "exact|https://www.mydomain.com/index.html", "https://www.mydomain.com/index.html"
+      // e.g.: "regexp|^https?://.+\\.extranet\\.mydomain\\.com/.*\\.html$", "r|^https?://.+\\.extranet\\.mydomain\\.com/.*\\.html$"
+      // e.g.: "contains|mydomain.com", "c|mydomain.com"
+    }
+  }
+}
