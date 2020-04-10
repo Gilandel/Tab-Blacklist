@@ -69,7 +69,7 @@ chrome.tabs.onCreated.addListener(function(tab) {
 		}
 		
 		if (remove) {
-			if (lastActiveTab?.id != null) {
+			if (lastActiveTab && lastActiveTab.id != null) {
 				chrome.tabs.update(lastActiveTab.id, {active: true});
 			}
 			chrome.tabs.remove(tab.id);
