@@ -45,9 +45,11 @@ var load = function() {
 
 load();
 
-chrome.storage.managed.onChanged.addListener(function(changes, namespace) {
-	load();
-});
+if (typeof chrome.storage.managed.onChanged !== 'undefined') {
+	chrome.storage.managed.onChanged.addListener(function(changes, namespace) {
+		load();
+	});
+}
 
 chrome.tabs.onCreated.addListener(function(tab) {
 	
