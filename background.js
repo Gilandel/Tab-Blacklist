@@ -25,43 +25,46 @@ var lastActiveTab = {};
  */
 function load() {
 	blacklist.length = 0;
-	
-	chrome.storage.managed.get('BlacklistUrls', function(results) {
-		
-		results.BlacklistUrls.forEach(function(entry) {
-			
-			var result = PARSER.exec(entry);
-			
-			if (result !== null) {
-				
-				var onInstalled = result[1] !== '!';
-				var mode = result[2] || 'exact';
-				var url = result[3];
-			
-				var black = {
-					onInstalled: onInstalled,
-					exact: false,
-					contains: false,
-					url: url
-				};
-				
-				switch (mode) {
-					case 'regexp':
-					case 'r':
-						black.regexp = new RegExp(url);
-						break;
-					case 'contains':
-					case 'c':
-						black.contains = true;
-						break;
-					case 'exact':
-					default:
-						black.exact = true;
+
+	chrome.storage.managed.get('BlacklistUrls', function (results) {
+
+		if (results && results.BlacklistUrls) {
+
+			results.BlacklistUrls.forEach(function (entry) {
+
+				var result = PARSER.exec(entry);
+
+				if (result !== null) {
+
+					var onInstalled = result[1] !== '!';
+					var mode = result[2] || 'exact';
+					var url = result[3];
+
+					var black = {
+						onInstalled: onInstalled,
+						exact: false,
+						contains: false,
+						url: url
+					};
+
+					switch (mode) {
+						case 'regexp':
+						case 'r':
+							black.regexp = new RegExp(url);
+							break;
+						case 'contains':
+						case 'c':
+							black.contains = true;
+							break;
+						case 'exact':
+						default:
+							black.exact = true;
+					}
+
+					blacklist.push(black);
 				}
-				
-				blacklist.push(black);
-			}
-		});
+			});
+		}
 	});
 };
 
@@ -72,15 +75,15 @@ function load() {
  * @param {boolean} onInstalled if it's a tab present before installation
  */
 function removeTab(tab, onInstalled) {
-	
+
 	var url = tab.url || tab.pendingUrl;
-	
-	blacklist.forEach(function(black) {
+
+	blacklist.forEach(function (black) {
 		var remove = false;
-		
+
 		// Only remove if not during installation or if enabled during installation
 		if (onInstalled == null || typeof onInstalled === 'undefined' || black.onInstalled == onInstalled) {
-			
+
 			// check exactly the tab's URL against the blacklisted URL
 			if (black.exact) {
 				if (url == black.url) {
@@ -89,7 +92,7 @@ function removeTab(tab, onInstalled) {
 			}
 			// check only if tab's URL contains the blacklisted URL
 			else if (black.contains) {
-				if(url.includes(black.url)) {
+				if (url.includes(black.url)) {
 					remove = true;
 				}
 			}
@@ -98,11 +101,11 @@ function removeTab(tab, onInstalled) {
 				remove = true;
 			}
 		}
-		
+
 		// try to remove the blacklisted tab
 		if (remove) {
 			if (lastActiveTab && lastActiveTab.id != null) {
-				chrome.tabs.update(lastActiveTab.id, {active: true});
+				chrome.tabs.update(lastActiveTab.id, { active: true });
 			}
 			chrome.tabs.remove(tab.id);
 			return;
@@ -154,7 +157,7 @@ load();
  * Manage storage changement event (reloaded policies)
  */
 if (typeof chrome.storage.managed.onChanged !== 'undefined') {
-	chrome.storage.managed.onChanged.addListener(function(changes, namespace) {
+	chrome.storage.managed.onChanged.addListener(function (changes, namespace) {
 		load();
 	});
 }
@@ -167,7 +170,7 @@ chrome.tabs.onCreated.addListener(removeTab);
 /**
  * Manage at startup, the current or first active tab
  */
-chrome.tabs.query({active: true, lastFocusedWindow: true}, function(tabs) {
+chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
 	updateActive(tabs[0]);
 });
 
@@ -184,12 +187,12 @@ chrome.tabs.onUpdated.addListener(onUpdated);
 /**
  * On extension initialization, remove previously opened blacklisted URLs
  */
-chrome.runtime.onInstalled.addListener(function() {
-    chrome.windows.getAll({ populate: true }, function(windows) {
-        windows.forEach(function(window) {
-			window.tabs.forEach(function(tab) {
+chrome.runtime.onInstalled.addListener(function () {
+	chrome.windows.getAll({ populate: true }, function (windows) {
+		windows.forEach(function (window) {
+			window.tabs.forEach(function (tab) {
 				removeTab(tab, true);
 			});
 		});
-    });
+	});
 });
