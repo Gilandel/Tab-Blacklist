@@ -16,12 +16,51 @@ class BlackUrl {
 	 * @param {RegExp} regexp the regular expression used to check the tab's URL (is null in 'exact' or 'contains' mode)
 	 */
 	constructor(all, onInstalled, exact, contains, url, regexp) {
-		this.all = all;
-		this.onInstalled = onInstalled;
-		this.exact = exact;
-		this.contains = contains;
+		this.all = all || false;
+		this.onInstalled = onInstalled || true;
+		this.exact = exact || false;
+		this.contains = contains || false;
+		this.url = url || null;
+		this.regexp = regexp || null;
+	}
+
+	/**
+	 * Set blacklisted URL in 'exact' mode
+	 * 
+	 * @param {string} url the backlisted URL
+	 */
+	set setExact (url) {
 		this.url = url;
-		this.regexp = regexp;
+		this.exact = true;
+
+		this.regexp = null;
+		this.contains = false;
+	}
+
+	/**
+	 * Set blacklisted URL in 'contains' mode
+	 * 
+	 * @param {string} url the backlisted URL
+	 */
+	set setContains (url) {
+		this.url = url;
+		this.contains = true;
+
+		this.regexp = null;
+		this.exact = false;
+	}
+
+	/**
+	 * Set blacklisted URL in 'regexp' mode
+	 * 
+	 * @param {string} url the backlisted URL
+	 */
+	set setRegExp (url) {
+		this.regexp = new RegExp(url);
+
+		this.url = null;
+		this.exact = false;
+		this.contains = false;
 	}
 }
 
@@ -55,22 +94,20 @@ function load() {
 					var mode = result[2] || 'exact';
 					var url = result[3];
 
-					var blackUrl = new BlackUrl(all, onInstalled, false, false, null, null);
+					var blackUrl = new BlackUrl(all, onInstalled);
 
 					switch (mode) {
 						case 'regexp':
 						case 'r':
-							blackUrl.regexp = new RegExp(url);
+							blackUrl.setRegExp(url);
 							break;
 						case 'contains':
 						case 'c':
-							blackUrl.url = url;
-							blackUrl.contains = true;
+							blackUrl.setContains(url);
 							break;
 						case 'exact':
 						default:
-							blackUrl.url = url;
-							blackUrl.exact = true;
+							blackUrl.setExact(url);
 					}
 
 					BLACKLIST.push(blackUrl);
@@ -191,7 +228,7 @@ function updateActive(tab) {
 	});
 
 	if (!removed) {
-		chrome.tabs.get(tab.id, function(tab) {
+		chrome.tabs.get(tab.id, function (tab) {
 			if (chrome.runtime.lastError) {
 				return;
 			}
