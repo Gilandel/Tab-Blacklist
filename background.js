@@ -1,30 +1,44 @@
 /**
  * configuration parser and validator
  */
-const PARSER = new RegExp('^(?:(!)?(c|r|exact|regexp|contains)\\\|)?([^|]+)$');
+const PARSER = new RegExp('^([!+])?(?:(c|r|exact|regexp|contains)\\\|)?([^|]+)$');
+
+class BlackUrl {
+
+	/**
+	 * Construct Blacklisted URL object used to check URL
+	 * 
+	 * @param {boolean} all if true, will close all blacklisted urls even open by users
+	 * @param {boolean} onInstalled if the blacklist has to be applied on existing tab (before installation)
+	 * @param {boolean} exact if the tab's URL has to match exactly the blacklisted URL
+	 * @param {boolean} contains if the tab's URL has to contain the blacklisted URL
+	 * @param {string} url the blacklisted URL, only used if 'exact' or 'contains' is true
+	 * @param {RegExp} regexp the regular expression used to check the tab's URL (may be null)
+	 */
+	constructor(all, onInstalled, exact, contains, url, regexp) {
+		this.all = all;
+		this.onInstalled = onInstalled;
+		this.exact = exact;
+		this.contains = contains;
+		this.url = url;
+		this.regexp = regexp;
+	}
+}
 
 /**
- * Array of blacklist object
- * 
- * [{
- * onInstalled: boolean => if the blacklist has to be applied on existing tab (before installation)
- * exact: boolean => if the tab's URL has to match exactly the blacklisted URL
- * contains: boolean => if the tab's URL has to contain the blacklisted URL
- * url: string => the blacklisted URL, only used if 'exact' or 'contains' is true
- * regexp: regexp => the regular expression used to check the tab's URL
- * }]
+ * Array of BlackUrl object
  */
-var blacklist = [];
+var BLACKLIST = [];
 /**
  * Variable to store current active tab
  */
-var lastActiveTab = {};
+var LAST_ACTIVE_TAB = {};
 
 /**
  * Load storage data
  */
 function load() {
-	blacklist.length = 0;
+	BLACKLIST.length = 0;
 
 	chrome.storage.managed.get('BlacklistUrls', function (results) {
 
@@ -37,36 +51,97 @@ function load() {
 				if (result !== null) {
 
 					var onInstalled = result[1] !== '!';
+					var all = result[1] === '+';
 					var mode = result[2] || 'exact';
 					var url = result[3];
 
-					var black = {
-						onInstalled: onInstalled,
-						exact: false,
-						contains: false,
-						url: url
-					};
+					var blackUrl = new BlackUrl(all, onInstalled, false, false, url, null);
 
 					switch (mode) {
 						case 'regexp':
 						case 'r':
-							black.regexp = new RegExp(url);
+							blackUrl.regexp = new RegExp(url);
 							break;
 						case 'contains':
 						case 'c':
-							black.contains = true;
+							blackUrl.contains = true;
 							break;
 						case 'exact':
 						default:
-							black.exact = true;
+							blackUrl.exact = true;
 					}
 
-					blacklist.push(black);
+					BLACKLIST.push(blackUrl);
 				}
 			});
 		}
 	});
-};
+}
+
+/**
+ * Check if the specified URl is blacklisted
+ * 
+ * @param {string} url URL to check
+ * @param {BlackUrl} blackUrl blacklist object used to check
+ * @returns {boolean} if URL is blacklisted
+ */
+function isBlacklisted(url, blackUrl) {
+	var blacklisted = false;
+
+	// check exactly the tab's URL against the blacklisted URL
+	if (blackUrl.exact) {
+		if (url == blackUrl.url) {
+			blacklisted = true;
+		}
+	}
+	// check only if tab's URL contains the blacklisted URL
+	else if (blackUrl.contains) {
+		if (url.includes(blackUrl.url)) {
+			blacklisted = true;
+		}
+	}
+	// check if tab's URL matches regular expression
+	else if (blackUrl.regexp.test(url)) {
+		blacklisted = true;
+	}
+
+	return blacklisted;
+}
+
+/**
+ * Remove tab if blacklisted and try to refocus on previous active tab
+ * 
+ * @param {chrome.tabs.Tab} tab tab object updated
+ * @param {BlackUrl} blackUrl blacklist object used to check
+ * @returns {boolean} if tab has been removed
+ */
+function removeTab(tab, blackUrl) {
+
+	var url = tab.url || tab.pendingUrl;
+
+	// try to remove the blacklisted tab
+	if (isBlacklisted(url, blackUrl)) {
+
+		if (LAST_ACTIVE_TAB && LAST_ACTIVE_TAB.id != null) {
+
+			chrome.tabs.update(LAST_ACTIVE_TAB.id, { active: true }, function (tab) {
+
+				// on error, just let chrome define active tab
+				if (chrome.runtime.lastError) {
+					return;
+				}
+			});
+		}
+
+		chrome.tabs.remove(tab.id, function () {
+			if (chrome.runtime.lastError) {
+				return;
+			}
+		});
+
+		return true;
+	}
+}
 
 /**
  * Manage creation tab event and try to close them if blacklisted
@@ -74,47 +149,25 @@ function load() {
  * @param {chrome.tabs.Tab} tab tab object updated
  * @param {boolean} onInstalled if it's a tab present before installation
  */
-function removeTab(tab, onInstalled) {
+function onCreated(tab, onInstalled) {
+	if (chrome.runtime.lastError) {
+		return;
+	}
 
-	var url = tab.url || tab.pendingUrl;
-
-	blacklist.forEach(function (black) {
-		var remove = false;
+	BLACKLIST.forEach(function (blackUrl) {
 
 		// Only remove if not during installation or if enabled during installation
-		if (onInstalled == null || typeof onInstalled === 'undefined' || black.onInstalled == onInstalled) {
+		if (onInstalled == null || typeof onInstalled === 'undefined' || blackUrl.onInstalled == onInstalled) {
 
-			// check exactly the tab's URL against the blacklisted URL
-			if (black.exact) {
-				if (url == black.url) {
-					remove = true;
-				}
+			if (removeTab(tab, blackUrl)) {
+				return;
 			}
-			// check only if tab's URL contains the blacklisted URL
-			else if (black.contains) {
-				if (url.includes(black.url)) {
-					remove = true;
-				}
-			}
-			// check if tab's URL matches regular expression
-			else if (black.regexp.test(url)) {
-				remove = true;
-			}
-		}
-
-		// try to remove the blacklisted tab
-		if (remove) {
-			if (lastActiveTab && lastActiveTab.id != null) {
-				chrome.tabs.update(lastActiveTab.id, { active: true });
-			}
-			chrome.tabs.remove(tab.id);
-			return;
 		}
 	});
-};
+}
 
 /**
- * Try to update the variable with the current active tab
+ * Try to update the variable with the current active tab and remove blacklisted URL
  * 
  * @param {chrome.tabs.Tab} tab tab object updated
  */
@@ -123,7 +176,27 @@ function updateActive(tab) {
 		return;
 	}
 
-	lastActiveTab = tab;
+	var removed = false;
+
+	BLACKLIST.filter(function (blackUrl) {
+		return blackUrl.all;
+	}).forEach(function (blackUrl) {
+
+		if (removeTab(tab, blackUrl)) {
+			removed = true;
+			return;
+		}
+	});
+
+	if (!removed) {
+		chrome.tabs.get(tab.id, function(tab) {
+			if (chrome.runtime.lastError) {
+				return;
+			}
+
+			LAST_ACTIVE_TAB = tab;
+		});
+	}
 }
 
 /**
@@ -139,7 +212,7 @@ function onActivated(info) {
  * Manage active tab through tabs update event
  * 
  * @param {integer} tabId tab identifier
- * @param {object} changeInfo object containing changes
+ * @param {object} changeInfo object containing changes (see: https://developer.chrome.com/extensions/tabs#event-onUpdated)
  * @param {chrome.tabs.Tab} tab tab object updated
  */
 function onUpdated(tabId, changeInfo, tab) {
@@ -165,12 +238,17 @@ if (typeof chrome.storage.managed.onChanged !== 'undefined') {
 /**
  * Manage closing tab event
  */
-chrome.tabs.onCreated.addListener(removeTab);
+chrome.tabs.onCreated.addListener(onCreated);
 
 /**
  * Manage at startup, the current or first active tab
  */
 chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
+	if (chrome.runtime.lastError) {
+		return;
+	}
+
+	// we try to remove first tab ^^, replace with another url ?
 	updateActive(tabs[0]);
 });
 
@@ -191,7 +269,7 @@ chrome.runtime.onInstalled.addListener(function () {
 	chrome.windows.getAll({ populate: true }, function (windows) {
 		windows.forEach(function (window) {
 			window.tabs.forEach(function (tab) {
-				removeTab(tab, true);
+				onCreated(tab, true);
 			});
 		});
 	});
