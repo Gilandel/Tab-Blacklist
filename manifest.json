@@ -2,7 +2,7 @@
   "name": "Tabs Blacklist (Policies)",
   "version": "1.0.5",
   "manifest_version": 2,
-  "description": "Automatically closes blacklisted tabs.",
+  "description": "Automatically closes tabs with blacklisted URL.",
   "icons": {
     "16": "icons/tbl16.png",
     "48": "icons/tbl48.png",
