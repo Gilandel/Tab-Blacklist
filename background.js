@@ -8,12 +8,12 @@ class BlackUrl {
 	/**
 	 * Construct Blacklisted URL object used to check URL
 	 * 
-	 * @param {boolean} all if true, will close all blacklisted urls even open by users
+	 * @param {boolean} all if true, will close all blacklisted urls even opened by users
 	 * @param {boolean} onInstalled if the blacklist has to be applied on existing tab (before installation)
 	 * @param {boolean} exact if the tab's URL has to match exactly the blacklisted URL
 	 * @param {boolean} contains if the tab's URL has to contain the blacklisted URL
-	 * @param {string} url the blacklisted URL, only used if 'exact' or 'contains' is true
-	 * @param {RegExp} regexp the regular expression used to check the tab's URL (may be null)
+	 * @param {string} url the blacklisted URL, only used if 'exact' or 'contains' is true (is null in 'regexp' mode)
+	 * @param {RegExp} regexp the regular expression used to check the tab's URL (is null in 'exact' or 'contains' mode)
 	 */
 	constructor(all, onInstalled, exact, contains, url, regexp) {
 		this.all = all;
@@ -42,7 +42,7 @@ function load() {
 
 	chrome.storage.managed.get('BlacklistUrls', function (results) {
 
-		if (results && results.BlacklistUrls) {
+		if (results && results.BlacklistUrls && results.BlacklistUrls.length > 0) {
 
 			results.BlacklistUrls.forEach(function (entry) {
 
@@ -55,7 +55,7 @@ function load() {
 					var mode = result[2] || 'exact';
 					var url = result[3];
 
-					var blackUrl = new BlackUrl(all, onInstalled, false, false, url, null);
+					var blackUrl = new BlackUrl(all, onInstalled, false, false, null, null);
 
 					switch (mode) {
 						case 'regexp':
@@ -64,10 +64,12 @@ function load() {
 							break;
 						case 'contains':
 						case 'c':
+							blackUrl.url = url;
 							blackUrl.contains = true;
 							break;
 						case 'exact':
 						default:
+							blackUrl.url = url;
 							blackUrl.exact = true;
 					}
 
