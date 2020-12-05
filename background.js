@@ -1,7 +1,7 @@
 /**
  * configuration parser and validator
  */
-const PARSER = new RegExp('^([!+])?(?:(c|r|exact|regexp|contains)\\\|)?([^|]+)$');
+const PARSER = new RegExp('^([!+])?(?:(exact|c|contains|r|regexp)\\\|)?([^|]+)$');
 
 class BlackUrl {
 
