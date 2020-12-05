@@ -156,7 +156,7 @@ function onCreated(tab, onInstalled) {
 
 	BLACKLIST.forEach(function (blackUrl) {
 
-		// Only remove if not during installation or if enabled during installation
+		// Only remove if not during installation or if during installation is enabled
 		if (onInstalled == null || typeof onInstalled === 'undefined' || blackUrl.onInstalled == onInstalled) {
 
 			if (removeTab(tab, blackUrl)) {
