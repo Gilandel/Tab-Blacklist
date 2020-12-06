@@ -64,7 +64,7 @@ class BlackUrl {
 	}
 
 	/**
-	 * Check if the specified URl is blacklisted
+	 * Check if the specified URL is blacklisted
 	 * 
 	 * @param {string} url URL to check
 	 * @returns {boolean} if URL is blacklisted
@@ -97,22 +97,23 @@ class BlackUrl {
  * Array of BlackUrl object
  */
 var BLACKLIST = [];
+
 /**
- * Variable to store current active tab
+ * Variable to store current active tab identifier
  */
-var LAST_ACTIVE_TAB = {};
+var LAST_ACTIVE_TAB_ID = -1;
 
 /**
  * Load storage data
  */
-function load() {
+let load = () => {
 	BLACKLIST.length = 0;
 
-	chrome.storage.managed.get('BlacklistUrls', function (results) {
+	chrome.storage.managed.get('BlacklistUrls', (results) => {
 
 		if (results && results.BlacklistUrls && results.BlacklistUrls.length > 0) {
 
-			results.BlacklistUrls.forEach(function (entry) {
+			results.BlacklistUrls.forEach((entry) => {
 
 				var result = PARSER.exec(entry);
 
@@ -153,16 +154,16 @@ function load() {
  * @param {BlackUrl} blackUrl blacklist object used to check
  * @returns {boolean} if tab has been removed
  */
-function removeTab(tab, blackUrl) {
+let removeTab = (tab, blackUrl) => {
 
 	var url = tab.url || tab.pendingUrl;
 
 	// try to remove the blacklisted tab
 	if (blackUrl.isBlacklisted(url)) {
 
-		if (LAST_ACTIVE_TAB && LAST_ACTIVE_TAB.id != null) {
+		if (LAST_ACTIVE_TAB_ID > -1) {
 
-			chrome.tabs.update(LAST_ACTIVE_TAB.id, { active: true }, function (tab) {
+			chrome.tabs.update(LAST_ACTIVE_TAB_ID, { active: true }, (tab) => {
 
 				// on error, just let chrome define active tab
 				if (chrome.runtime.lastError) {
@@ -171,7 +172,7 @@ function removeTab(tab, blackUrl) {
 			});
 		}
 
-		chrome.tabs.remove(tab.id, function () {
+		chrome.tabs.remove(tab.id, () => {
 			if (chrome.runtime.lastError) {
 				return;
 			}
@@ -181,6 +182,8 @@ function removeTab(tab, blackUrl) {
 		// so we should use a promise but for now, we just want to know if the task has been started
 		// and if the input URL is blacklisted
 		return true;
+	} else {
+		return false;
 	}
 }
 
@@ -190,12 +193,12 @@ function removeTab(tab, blackUrl) {
  * @param {chrome.tabs.Tab} tab tab object updated
  * @param {boolean} onInstalled if it's a tab present before installation
  */
-function onCreated(tab, onInstalled) {
+let onCreated = (tab, onInstalled) => {
 	if (chrome.runtime.lastError) {
 		return;
 	}
 
-	BLACKLIST.forEach(function (blackUrl) {
+	BLACKLIST.forEach((blackUrl) => {
 
 		// Only remove if not during installation or if during installation is enabled
 		if (onInstalled == null || typeof onInstalled === 'undefined' || blackUrl.onInstalled == onInstalled) {
@@ -212,16 +215,14 @@ function onCreated(tab, onInstalled) {
  * 
  * @param {chrome.tabs.Tab} tab tab object updated
  */
-function updateActive(tab) {
+let updateActive = (tab) => {
 	if (chrome.runtime.lastError) {
 		return;
 	}
 
 	var removed = false;
 
-	BLACKLIST.filter(function (blackUrl) {
-		return blackUrl.all;
-	}).forEach(function (blackUrl) {
+	BLACKLIST.filter((blackUrl) => blackUrl.all).forEach((blackUrl) => {
 
 		if (removeTab(tab, blackUrl)) {
 			removed = true;
@@ -230,12 +231,14 @@ function updateActive(tab) {
 	});
 
 	if (!removed) {
-		chrome.tabs.get(tab.id, function (tab) {
+		chrome.tabs.get(tab.id, (tab) => {
+
 			if (chrome.runtime.lastError) {
+				LAST_ACTIVE_TAB_ID = -1;
 				return;
 			}
 
-			LAST_ACTIVE_TAB = tab;
+			LAST_ACTIVE_TAB_ID = tab.id;
 		});
 	}
 }
@@ -243,20 +246,20 @@ function updateActive(tab) {
 /**
  * Manage activated tab event
  * 
- * @param {{tabId: integer, windowId: integer}} info information on active tab
+ * @param {{tabId: number, windowId: number}} info information on active tab
  */
-function onActivated(info) {
+let onActivated = (info) => {
 	chrome.tabs.get(info.tabId, updateActive);
 }
 
 /**
  * Manage active tab through tabs update event
  * 
- * @param {integer} tabId tab identifier
+ * @param {number} tabId tab identifier
  * @param {object} changeInfo object containing changes (see: https://developer.chrome.com/extensions/tabs#event-onUpdated)
  * @param {chrome.tabs.Tab} tab tab object updated
  */
-function onUpdated(tabId, changeInfo, tab) {
+let onUpdated = (tabId, changeInfo, tab) => {
 	if (tab.active) {
 		updateActive(tab);
 	}
@@ -271,7 +274,7 @@ load();
  * Manage storage changement event (reloaded policies)
  */
 if (typeof chrome.storage.managed.onChanged !== 'undefined') {
-	chrome.storage.managed.onChanged.addListener(function (changes, namespace) {
+	chrome.storage.managed.onChanged.addListener((changes, namespace) => {
 		load();
 	});
 }
@@ -284,7 +287,7 @@ chrome.tabs.onCreated.addListener(onCreated);
 /**
  * Manage at startup, the current or first active tab
  */
-chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
+chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
 	if (chrome.runtime.lastError) {
 		return;
 	}
@@ -306,12 +309,10 @@ chrome.tabs.onUpdated.addListener(onUpdated);
 /**
  * On extension initialization, remove previously opened blacklisted URLs
  */
-chrome.runtime.onInstalled.addListener(function () {
-	chrome.windows.getAll({ populate: true }, function (windows) {
-		windows.forEach(function (window) {
-			window.tabs.forEach(function (tab) {
-				onCreated(tab, true);
-			});
+chrome.runtime.onInstalled.addListener(() => {
+	chrome.windows.getAll({ populate: true }, (windows) => {
+		windows.forEach((window) => {
+			window.tabs.forEach((tab) => onCreated(tab, true));
 		});
 	});
 });
