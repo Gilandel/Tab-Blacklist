@@ -1,17 +1,18 @@
 {
   "type": "object",
   "properties": {
+    "Debug": {
+      "title" : "Enable debug mode",
+      "description" : "At startup open a tab that allow you to debug loading and blacklisting",
+      "type": "boolean"
+    },
     "BlacklistUrls": {
+      "title": "List of blacklisted URLs",
+      "description": "Format: exact URL or mode|pattern ; Modes: 'exact', 'c' or 'contains', 'r' or 'regexp' ; Prefixes : '+' to close tabs even those opened by user, '!' to avoid closing already opened tabs on startup",
       "type": "array",
       "items" : {
-         "type": "string"
-       }
-      // format: "mode|url", "url"...
-      // mode: regexp, exact, contains (exact by default)
-      // mode shortcuts: 'r' for 'regexp', 'c' for 'contains' and nothing for 'exact'
-      // e.g.: "exact|https://www.mydomain.com/index.html", "https://www.mydomain.com/index.html"
-      // e.g.: "regexp|^https?://.+\\.extranet\\.mydomain\\.com/.*\\.html$", "r|^https?://.+\\.extranet\\.mydomain\\.com/.*\\.html$"
-      // e.g.: "contains|mydomain.com", "c|mydomain.com"
+        "type": "string"
+      }
     }
   }
 }
