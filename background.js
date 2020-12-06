@@ -62,6 +62,35 @@ class BlackUrl {
 		this.exact = false;
 		this.contains = false;
 	}
+
+	/**
+	 * Check if the specified URl is blacklisted
+	 * 
+	 * @param {string} url URL to check
+	 * @returns {boolean} if URL is blacklisted
+	 */
+	isBlacklisted(url) {
+		var blacklisted = false;
+
+		// check exactly the tab's URL against the blacklisted URL
+		if (this.exact) {
+			if (url == this.url) {
+				blacklisted = true;
+			}
+		}
+		// check only if tab's URL contains the blacklisted URL
+		else if (this.contains) {
+			if (url.includes(this.url)) {
+				blacklisted = true;
+			}
+		}
+		// check if tab's URL matches regular expression
+		else if (this.regexp.test(url)) {
+			blacklisted = true;
+		}
+
+		return blacklisted;
+	}
 }
 
 /**
@@ -118,36 +147,6 @@ function load() {
 }
 
 /**
- * Check if the specified URl is blacklisted
- * 
- * @param {string} url URL to check
- * @param {BlackUrl} blackUrl blacklist object used to check
- * @returns {boolean} if URL is blacklisted
- */
-function isBlacklisted(url, blackUrl) {
-	var blacklisted = false;
-
-	// check exactly the tab's URL against the blacklisted URL
-	if (blackUrl.exact) {
-		if (url == blackUrl.url) {
-			blacklisted = true;
-		}
-	}
-	// check only if tab's URL contains the blacklisted URL
-	else if (blackUrl.contains) {
-		if (url.includes(blackUrl.url)) {
-			blacklisted = true;
-		}
-	}
-	// check if tab's URL matches regular expression
-	else if (blackUrl.regexp.test(url)) {
-		blacklisted = true;
-	}
-
-	return blacklisted;
-}
-
-/**
  * Remove tab if blacklisted and try to refocus on previous active tab
  * 
  * @param {chrome.tabs.Tab} tab tab object updated
@@ -159,7 +158,7 @@ function removeTab(tab, blackUrl) {
 	var url = tab.url || tab.pendingUrl;
 
 	// try to remove the blacklisted tab
-	if (isBlacklisted(url, blackUrl)) {
+	if (blackUrl.isBlacklisted(url)) {
 
 		if (LAST_ACTIVE_TAB && LAST_ACTIVE_TAB.id != null) {
 
@@ -178,6 +177,9 @@ function removeTab(tab, blackUrl) {
 			}
 		});
 
+		// returns true even if chrome removes tab asynchronously
+		// so we should use a promise but for now, we just want to know if the task has been started
+		// and if the input URL is blacklisted
 		return true;
 	}
 }
