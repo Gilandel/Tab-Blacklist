@@ -33,23 +33,31 @@ var LAST_ACTIVE_TAB_ID = -1;
 var REMOVING_TAB_ID = -1;
 
 /**
+ * Event origins
+ */
+var EVENT_INIT = 0;
+var EVENT_CREATION = 1;
+var EVENT_UPDATE = 2;
+var EVENT_STORAGE = 3;
+var EVENTS = ['init', 'onCreated', 'onUpdated', 'updateStorage'];
+
+/**
  * Remove tab if blacklisted and try to refocus on previous active tab
  * 
- * @param {chrome.tabs.Tab} tab tab object updated
+ * @param {number} tabId tab identifier
+ * @param {string} url tab's URL
  * @param {BlackUrl} blackUrl blacklist object used to check
  * @returns {boolean} if tab has been removed
  */
-let removeTab = (tab, blackUrl) => {
-
-	var url = tab.url || tab.pendingUrl;
+let removeTab = (tabId, url, blackUrl) => {
 
 	// try to remove the blacklisted tab
-	if (blackUrl.isBlacklisted(url) && REMOVING_TAB_ID !== tab.id) {
-		REMOVING_TAB_ID = tab.id;
+	if (blackUrl.isBlacklisted(url) && REMOVING_TAB_ID !== tabId) {
+		REMOVING_TAB_ID = tabId;
 
 		L.info('removeTab - URL is blacklisted: ' + url);
 
-		if (LAST_ACTIVE_TAB_ID === tab.id) {
+		if (LAST_ACTIVE_TAB_ID === tabId) {
 			LAST_ACTIVE_TAB_ID = -1;
 		}
 
@@ -67,11 +75,11 @@ let removeTab = (tab, blackUrl) => {
 			});
 		}
 
-		chrome.tabs.remove(tab.id, () => {
+		chrome.tabs.remove(tabId, () => {
 			if (chrome.runtime.lastError) {
-				L.error('removeTab - Removing tab failed: ' + tab.id);
+				L.error('removeTab - Removing tab failed: ' + tabId);
 			} else {
-				L.success('removeTab - Tab removed: ' + tab.id);
+				L.success('removeTab - Tab removed: ' + tabId);
 			}
 
 			REMOVING_TAB_ID = -1;
@@ -90,33 +98,42 @@ let removeTab = (tab, blackUrl) => {
  * Manage tab event and try to close them if blacklisted
  * 
  * @param {chrome.tabs.Tab} tab tab object updated
- * @param {boolean} onStartup if it's a tab present before startup
+ * @param {number} fromEvent description of event origin
  */
-let onEvent = (tab, onStartup) => {
+let onEvent = (tab, fromEvent) => {
 	if (chrome.runtime.lastError) {
 		return;
 	}
 
-	var removed = false;
+	var url = tab.url || tab.pendingUrl;
 
-	C.BLACKLIST.every((blackUrl) => {
+	if (typeof url !== 'undefined') {
+		var removed = false;
 
-		// Only remove if not during startup or if in all cases
-		if (blackUrl.onStartup == onStartup || blackUrl.all) {
+		let onStartup = fromEvent === EVENT_INIT;
+		let notOpenedByUser = (fromEvent === EVENT_CREATION && (tab.openerTabId === null || typeof tab.openerTabId === 'undefined'));
 
-			if (removeTab(tab, blackUrl)) {
-				return false;
+		L.info('onEvent(' + EVENTS[fromEvent] + ') - Validate tab: ' + tab.id + ', url: ' + url + ', onStartup: ' + onStartup + ', opened by user: ' + !notOpenedByUser);
+
+		C.BLACKLIST.every((blackUrl) => {
+
+			// Only remove if not during startup or if in all cases
+			if (blackUrl.all || (onStartup && blackUrl.onStartup) || notOpenedByUser) {
+
+				if (removeTab(tab.id, url, blackUrl)) {
+					return false;
+				}
 			}
+
+			return true;
+		});
+
+		if (!removed && REMOVING_TAB_ID !== tab.id && typeof tab.id !== 'undefined') {
+			L.success('onEvent(' + EVENTS[fromEvent] + ') - Reset active tab, id: ' + tab.id + ', title: ' + tab.title);
+			LAST_ACTIVE_TAB_ID = tab.id;
+		} else {
+			LAST_ACTIVE_TAB_ID = -1;
 		}
-
-		return true;
-	});
-
-	if (!removed && REMOVING_TAB_ID !== tab.id && typeof tab.id !== 'undefined') {
-		L.success('onEvent - Reset active tab, id: ' + tab.id + ', title: ' + tab.title);
-		LAST_ACTIVE_TAB_ID = tab.id;
-	} else {
-		LAST_ACTIVE_TAB_ID = -1;
 	}
 };
 
@@ -160,14 +177,14 @@ let onRemoved = (tabId, removeInfo) => {
 /**
  * Post load, reload or startup, analyze all tabs
  * 
- * @param {boolean} onStartup if it's a tab present before startup
+ * @param {number} fromEvent description of event origin
  * @returns {function} callback function
  */
-let analyzeAllTabs = (onStartup) => {
+let analyzeAllTabs = (fromEvent) => {
 	return () => {
 		chrome.windows.getAll({ populate: true }, (windows) => {
 			windows.forEach((window) => {
-				window.tabs.forEach((tab) => onEvent(tab, onStartup));
+				window.tabs.forEach((tab) => onEvent(tab, fromEvent));
 			});
 		});
 	};
@@ -183,7 +200,7 @@ let storageUpdate = (changes, namespace) => {
 	if (namespace === 'managed') {
 		L.info('storageUpdate - Reloading managed policies', L.LOG_MODE_CONFIGURATION);
 
-		C.load(callback => D.callbackDebug(callback), analyzeAllTabs(false));
+		C.load(callback => D.callbackDebug(callback), analyzeAllTabs(EVENT_STORAGE));
 	}
 };
 
@@ -195,7 +212,7 @@ chrome.storage.onChanged.addListener(storageUpdate);
 /**
  * Manage closing tab event
  */
-chrome.tabs.onCreated.addListener(tab => onEvent(tab, false));
+chrome.tabs.onCreated.addListener(tab => onEvent(tab, EVENT_CREATION));
 
 /**
  * Manage activated tab event
@@ -205,7 +222,7 @@ chrome.tabs.onActivated.addListener(onActivated);
 /**
  * Manage active tab through tabs update event
  */
-chrome.tabs.onUpdated.addListener(tab => onEvent(tab, false));
+chrome.tabs.onUpdated.addListener((tabId, changes, tab) => onEvent(tab, EVENT_UPDATE));
 
 /**
  * Manage tab closing, try to detect debug page closing
@@ -215,4 +232,4 @@ chrome.tabs.onRemoved.addListener(onRemoved);
 /**
  * Load storage and init
  */
-C.load(callback => D.callbackDebug(callback), analyzeAllTabs(true));
+C.load(callback => D.callbackDebug(callback), analyzeAllTabs(EVENT_INIT));
