@@ -7,6 +7,11 @@ import Configuration from '/modules/configuration.js';
 var L = {};
 
 /**
+ * @type {Logger} configuration logger
+ */
+var LC = {};
+
+/**
  * @type {Configuration} The main configuration
  */
 var C = {};
@@ -27,6 +32,18 @@ class Debug {
     DEBUG_TAB_WINDOW_ID = -1;
 
     /**
+     * Dis/Enables loggers
+     * 
+     * @param {boolean} enabled if debug is enabled
+     * @param {object} port debug port
+     * @param {number} tabId debug page identifier
+     */
+    setLoggersEnabled(enabled, port, tabId) {
+        L.setEnabled(enabled, port, tabId);
+        LC.setEnabled(enabled, port, tabId);
+    }
+
+    /**
      * Un/Load debug page
      * 
      * @param {function} callbackBlacklist function called after debug page connection is established
@@ -37,7 +54,7 @@ class Debug {
         if (C.DEBUG) {
             if (this.DEBUG_LISTENER && this.DEBUG_PORT && this.DEBUG_PORT_LISTENER && this.DEBUG_TAB_ID > -1) {
                 if (typeof callbackBlacklist === 'function') {
-                    L.info('Reloading configuration...', L.LOG_MODE_CONFIGURATION);
+                    LC.info('Reloading configuration...');
 
                     callbackBlacklist();
                 }
@@ -50,7 +67,7 @@ class Debug {
                         if (port.name == chrome.runtime.id) {
                             this.DEBUG_PORT = port;
 
-                            L.setEnabled(C.DEBUG, this.DEBUG_PORT, this.DEBUG_TAB_ID);
+                            this.setLoggersEnabled(C.DEBUG, this.DEBUG_PORT, this.DEBUG_TAB_ID);
 
                             this.DEBUG_PORT_LISTENER = (msg) => {
                                 L.info(msg);
@@ -65,21 +82,21 @@ class Debug {
                                 }
                                 this.DEBUG_PORT = null;
 
-                                L.setEnabled(C.DEBUG, null);
+                                this.setLoggersEnabled(C.DEBUG, null);
                             });
 
                             this.DEBUG_PORT.onMessage.addListener(this.DEBUG_PORT_LISTENER);
 
-                            L.success('Connected to background', L.LOG_MODE_CONFIGURATION);
+                            LC.success('Connected to background');
                         } else {
                             this.DEBUG_PORT = null;
                             this.DEBUG_PORT_LISTENER = null;
 
-                            L.setEnabled(C.DEBUG, null);
+                            this.setLoggersEnabled(C.DEBUG, null);
                         }
 
                         if (typeof callbackBlacklist === 'function') {
-                            L.info('Loading configuration...', L.LOG_MODE_CONFIGURATION);
+                            LC.info('Loading configuration...');
                             
                             callbackBlacklist();
                         }
@@ -98,7 +115,7 @@ class Debug {
                 }
                 this.DEBUG_PORT.disconnect();
                 this.DEBUG_PORT = null;
-                L.setEnabled(C.DEBUG, null, -1);
+                this.setLoggersEnabled(C.DEBUG, null, -1);
             }
 
             if (this.DEBUG_LISTENER) {
@@ -114,7 +131,7 @@ class Debug {
 
                     this.DEBUG_TAB_ID = -1;
                     this.DEBUG_TAB_WINDOW_ID = -1;
-                    L.setEnabled(C.DEBUG, null, -1);
+                    this.setLoggersEnabled(C.DEBUG, null, -1);
                 });
             }
 
@@ -131,6 +148,15 @@ class Debug {
      */
     static setLogger(logger) {
         L = logger;
+    }
+
+    /**
+     * Set the configuration logger
+     * 
+     * @param {Logger} logger the logger
+     */
+    static setConfigurationLogger(logger) {
+        LC = logger;
     }
     
     /**

@@ -9,19 +9,15 @@ class Logger {
     LOG_ERROR = 'error';
 
     /**
-     * Log modes
-     */
-    LOG_MODE_CONFIGURATION = 'configuration';
-    LOG_MODE_DEBUG = 'debug';
-
-    /**
      * Construct the logger
      * 
+     * @param {string} name logger name
      * @param {boolean} enabled if debug is enabled
      * @param {object} port debug port
      * @param {number} tabId debug page identifier
      */
-    constructor(enabled, port, tabId){
+    constructor(name, enabled, port, tabId){
+        this.name = name || 'default';
         this.enabled = enabled || false;
         this.port = port || null;
         this.tabId = tabId || -1;
@@ -45,9 +41,8 @@ class Logger {
      * 
      * @param {string|function} input input message or message function supplier
      * @param {string} level log's level (supported: success, info, warn, error ; default: info)
-     * @param {string} mode log's mode (supported: configuration, debug ; default: debug)
      */
-    log(input, level, mode) {
+    log(input, level) {
         if (this.enabled) {
             let message;
             if (typeof input === 'function') {
@@ -56,22 +51,15 @@ class Logger {
                 message = input;
             }
 
-            let prefix;
-            if (mode === this.LOG_MODE_CONFIGURATION) {
-                prefix = mode;
-            } else {
-                prefix = this.LOG_MODE_DEBUG;
-            }
-
             if (this.port && this.tabId > -1) {
                 if (level !== this.LOG_ERROR && level !== this.LOG_WARN && level !== this.LOG_SUCCESS) {
                     level = this.LOG_INFO;
                 }
 
-                this.port.postMessage(prefix + '|' + level + '|' + message);
+                this.port.postMessage(this.name + '|' + level + '|' + message);
 
             } else if (console && console.log) {
-                message = prefix + ' - ' + message;
+                message = this.name + ' - ' + message;
 
                 switch (level) {
                     case this.LOG_ERROR:
@@ -93,40 +81,36 @@ class Logger {
      * Logs error through console or debug page
      * 
      * @param {string|function} input input message or message function supplier
-     * @param {string} mode log's mode (supported: configuration, debug ; default: debug)
      */
-    error(input, mode) {
-        this.log(input, this.LOG_ERROR, mode);
+    error(input) {
+        this.log(input, this.LOG_ERROR);
     }
 
     /**
      * Logs warning through console or debug page
      * 
      * @param {string|function} input input message or message function supplier
-     * @param {string} mode log's mode (supported: configuration, debug ; default: debug)
      */
-    warn(input, mode) {
-        this.log(input, this.LOG_WARN, mode);
+    warn(input) {
+        this.log(input, this.LOG_WARN);
     }
 
     /**
      * Logs information through console or debug page
      * 
      * @param {string|function} input input message or message function supplier
-     * @param {string} mode log's mode (supported: configuration, debug ; default: debug)
      */
-    info(input, mode) {
-        this.log(input, this.LOG_INFO, mode);
+    info(input) {
+        this.log(input, this.LOG_INFO);
     }
 
     /**
      * Logs success through console or debug page
      * 
      * @param {string|function} input input message or message function supplier
-     * @param {string} mode log's mode (supported: configuration, debug ; default: debug)
      */
-    success(input, mode) {
-        this.log(input, this.LOG_SUCCESS, mode);
+    success(input) {
+        this.log(input, this.LOG_SUCCESS);
     }
 }
 

@@ -6,6 +6,11 @@ import BlackUrl from '/modules/blackurl.js';
  */
 var L = {};
 
+/**
+ * @type {Logger} configuration logger
+ */
+var LC = {};
+
 class Configuration {
 
     /**
@@ -37,6 +42,7 @@ class Configuration {
                 this.DEBUG = results.Debug || this.DEBUG;
 
                 L.setEnabled(this.DEBUG);
+                LC.setEnabled(this.DEBUG);
 
                 // Load blacklisted URLs configuration
                 let callbackBlacklist = () => {
@@ -50,7 +56,7 @@ class Configuration {
                             }
                         });
                     } else {
-                        L.warn('load - no policies found', L.LOG_MODE_CONFIGURATION);
+                        LC.warn('load - no policies found');
                     }
 
                     if (typeof callbackPostConfig === 'function') {
@@ -68,7 +74,7 @@ class Configuration {
             }
         });
     }
-     
+    
     /**
      * Set the logger
      * 
@@ -76,6 +82,15 @@ class Configuration {
      */
     static setLogger(logger) {
         L = logger;
+    }
+    
+    /**
+     * Set the configuration logger
+     * 
+     * @param {Logger} logger the logger
+     */
+    static setConfigurationLogger(logger) {
+        LC = logger;
     }
 }
 

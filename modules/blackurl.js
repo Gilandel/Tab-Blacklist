@@ -1,9 +1,9 @@
 import Logger from '/modules/logger.js';
 
 /**
- * @type {Logger} global logger
+ * @type {Logger} configuration logger
  */
-var L = {};
+var LC = {};
 
 /**
  * @type {RegExp} configuration parser and validator
@@ -62,7 +62,7 @@ class BlackUrl {
 			this.setParam(true, false, url, null);
 			return true;
 		} else {
-			L.error('setExact - exact pattern is invalid, no scheme found: ' + url, L.LOG_MODE_CONFIGURATION);
+			LC.error('setExact - exact pattern is invalid, no scheme found: ' + url);
 			this.setParam(false, false, null, null);
 			return false;
 		}
@@ -88,7 +88,7 @@ class BlackUrl {
 			this.setParam(false, false, null, new RegExp(url));
 			return true;
 		} catch (e) {
-			L.error('setRegExp - regular expression cannot be parsed: ' + url + ', error: ' + JSON.stringify(e), L.LOG_MODE_CONFIGURATION);
+			LC.error('setRegExp - regular expression cannot be parsed: ' + url + ', error: ' + JSON.stringify(e));
 			this.setParam(false, false, null, null);
 			return false;
 		}
@@ -164,7 +164,7 @@ class BlackUrl {
 			var url = result[3];
 
 			if (url.length < 1) {
-				L.error('load - policy URL too short: ' + entry, L.LOG_MODE_CONFIGURATION);
+				LC.error('load - policy URL too short: ' + entry);
 				return;
 			}
 
@@ -188,23 +188,23 @@ class BlackUrl {
 					}
 			}
 
-            L.success('load - policy loaded: ' + blackUrl, L.LOG_MODE_CONFIGURATION);
+            LC.success('load - policy loaded: ' + blackUrl);
             
 			return blackUrl;
 		} else {
-            L.error('load - policy cannot be loaded: ' + entry, L.LOG_MODE_CONFIGURATION);
+            LC.error('load - policy cannot be loaded: ' + entry);
             
             return;
 		}
     }
     
     /**
-     * Set the logger
+     * Set the configuration logger
      * 
      * @param {Logger} logger the logger
      */
-    static setLogger(logger) {
-        L = logger;
+    static setConfigurationLogger(logger) {
+        LC = logger;
     }
 }
 

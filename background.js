@@ -4,12 +4,19 @@ import Configuration from '/modules/configuration.js';
 import Debug from '/modules/debug.js';
 
 /**
- * @type {Logger} Initialize logger and inject it
+ * @type {Logger} Initialize global logger and inject it
  */
-var L = new Logger();
-BackUrl.setLogger(L);
+var L = new Logger('debug');
 Configuration.setLogger(L);
 Debug.setLogger(L);
+
+/**
+ * @type {Logger} Initialize configuration logger and inject it
+ */
+var LC = new Logger('configuration');
+BackUrl.setConfigurationLogger(LC);
+Configuration.setConfigurationLogger(LC);
+Debug.setConfigurationLogger(LC);
 
 /**
  * @type {Configuration} The main configuration
@@ -171,6 +178,7 @@ let onRemoved = (tabId, removeInfo) => {
 		D.DEBUG_TAB_ID = -1;
 		D.DEBUG_TAB_WINDOW_ID = -1;
 		L.setEnabled(C.DEBUG, null, -1);
+		LC.setEnabled(C.DEBUG, null, -1);
 	}
 };
 
@@ -198,7 +206,7 @@ let analyzeAllTabs = (fromEvent) => {
  */
 let storageUpdate = (changes, namespace) => {
 	if (namespace === 'managed') {
-		L.info('storageUpdate - Reloading managed policies', L.LOG_MODE_CONFIGURATION);
+		LC.info('storageUpdate - Reloading managed policies');
 
 		C.load(callback => D.callbackDebug(callback), analyzeAllTabs(EVENT_STORAGE));
 	}
