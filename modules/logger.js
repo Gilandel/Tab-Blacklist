@@ -16,7 +16,7 @@ class Logger {
      * @param {object} port debug port
      * @param {number} tabId debug page identifier
      */
-    constructor(name, enabled, port, tabId){
+    constructor(name, enabled, port, tabId) {
         this.name = name || 'default';
         this.enabled = enabled || false;
         this.port = port || null;

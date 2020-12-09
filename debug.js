@@ -1,4 +1,4 @@
-var REGEX = new RegExp('^(?:(configuration|debug)\\|)?(success|info|warn|error)\\|(.*)$');
+var MSG_PARSER = new RegExp('^(?:(configuration|debug)\\|)?(success|info|warn|error)\\|(.*)$');
 
 var PORT = chrome.runtime.connect({ name: chrome.runtime.id });
 
@@ -12,11 +12,11 @@ if (PORT) {
         console.log(msg);
 
         if (msg) {
-            let results = REGEX.exec(msg);
+            let results = MSG_PARSER.exec(msg);
 
             if (results !== null) {
                 let debug = results[1] !== 'configuration';
-                let message = {'date': new Date(), 'level': results[2], 'message': results[3]};
+                let message = { 'date': new Date(), 'level': results[2], 'message': results[3] };
 
                 let messages;
                 let div;

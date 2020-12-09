@@ -97,7 +97,7 @@ class Debug {
 
                         if (typeof callbackBlacklist === 'function') {
                             LC.info('Loading configuration...');
-                            
+
                             callbackBlacklist();
                         }
                     };
@@ -158,7 +158,7 @@ class Debug {
     static setConfigurationLogger(logger) {
         LC = logger;
     }
-    
+
     /**
      * Set the configuration
      * 

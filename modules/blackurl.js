@@ -34,8 +34,8 @@ class BlackUrl {
 		this.contains = contains || false;
 		this.url = url || null;
 		this.regexp = regexp || null;
-    }
-    
+	}
+
 	/**
 	 * @private Private method to set parameters
 	 * 
@@ -101,23 +101,20 @@ class BlackUrl {
 	 * @returns {boolean} if URL is blacklisted
 	 */
 	isBlacklisted(url) {
-		var blacklisted = false;
+		let blacklisted = false;
 
-		// check exactly the tab's URL against the blacklisted URL
-		if (this.exact) {
-			if (url == this.url) {
-				blacklisted = true;
+		if (typeof this.url === 'string') {
+			// check exactly the tab's URL against the blacklisted URL
+			if (this.exact) {
+				blacklisted = url == this.url;
 			}
-		}
-		// check only if tab's URL contains the blacklisted URL
-		else if (this.contains) {
-			if (url.includes(this.url)) {
-				blacklisted = true;
+			// check only if tab's URL contains the blacklisted URL
+			else if (this.contains) {
+				blacklisted = url.includes(this.url);
 			}
-		}
-		// check if tab's URL matches regular expression
-		else if (this.regexp.test(url)) {
-			blacklisted = true;
+		} else if (this.regexp instanceof RegExp) {
+			// check if tab's URL matches regular expression
+			blacklisted = this.regexp.test(url);
 		}
 
 		return blacklisted;
@@ -151,7 +148,7 @@ class BlackUrl {
 	 * Parse policy and add it to blacklist array
 	 * 
 	 * @param {string} entry policy entry
-     * @returns {BlackUrl} created instance
+	 * @returns {BlackUrl} created instance
 	 */
 	static parseAndAdd(entry) {
 		var result = PARSER.exec(entry);
@@ -188,24 +185,24 @@ class BlackUrl {
 					}
 			}
 
-            LC.success('load - policy loaded: ' + blackUrl);
-            
+			LC.success('load - policy loaded: ' + blackUrl);
+
 			return blackUrl;
 		} else {
-            LC.error('load - policy cannot be loaded: ' + entry);
-            
-            return;
+			LC.error('load - policy cannot be loaded: ' + entry);
+
+			return;
 		}
-    }
-    
-    /**
-     * Set the configuration logger
-     * 
-     * @param {Logger} logger the logger
-     */
-    static setConfigurationLogger(logger) {
-        LC = logger;
-    }
+	}
+
+	/**
+	 * Set the configuration logger
+	 * 
+	 * @param {Logger} logger the logger
+	 */
+	static setConfigurationLogger(logger) {
+		LC = logger;
+	}
 }
 
 export default BlackUrl;

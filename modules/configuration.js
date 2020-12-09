@@ -74,7 +74,7 @@ class Configuration {
             }
         });
     }
-    
+
     /**
      * Set the logger
      * 
@@ -83,7 +83,7 @@ class Configuration {
     static setLogger(logger) {
         L = logger;
     }
-    
+
     /**
      * Set the configuration logger
      * 
